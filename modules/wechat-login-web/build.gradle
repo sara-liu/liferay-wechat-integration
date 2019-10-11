@@ -1,0 +1,14 @@
+dependencies {
+	compileOnly group: 'com.liferay.portal', name: 'com.liferay.portal.kernel', version: '3.46.2'
+	compileOnly group: "com.liferay.portal", name: "com.liferay.util.taglib"
+	compileOnly group: 'javax.portlet', name: 'portlet-api', version: '3.0.1'
+	compileOnly group: "javax.servlet", name: "javax.servlet-api"
+	compileOnly group: "jstl", name: "jstl"
+	compileOnly group: "org.osgi", name: "org.osgi.service.component.annotations"
+	
+	compileInclude group: 'commons-httpclient', name: 'commons-httpclient', version: '3.1'
+	compileInclude group: 'avalon-framework', name: 'avalon-framework', version: '4.1.5'
+	compileInclude group: 'logkit', name: 'logkit', version: '1.0.1'
+	
+	// compileOnly project(":modules:wechat-login-rest")
+}
