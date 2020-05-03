@@ -1,4 +1,4 @@
-Bundle-Name: wechat-login-rest
-Bundle-SymbolicName: wechat.login.rest
+Bundle-Name: liferay_wechat_login_rest
+Bundle-SymbolicName: com.liferay.wechat.login.rest
 Bundle-Version: 1.0.0
 Liferay-Configuration-Path: /configuration

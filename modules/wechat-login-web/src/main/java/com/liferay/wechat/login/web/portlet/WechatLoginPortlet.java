@@ -1,12 +1,11 @@
-package wechat.login.web.portlet;
+package com.liferay.wechat.login.web.portlet;
 
 import com.liferay.portal.kernel.portlet.bridges.mvc.MVCPortlet;
+import com.liferay.wechat.login.web.constants.WechatLoginPortletKeys;
 
 import javax.portlet.Portlet;
 
 import org.osgi.service.component.annotations.Component;
-
-import wechat.login.web.constants.WechatLoginPortletKeys;
 
 /**
  * @author liferay

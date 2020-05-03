@@ -1,4 +1,4 @@
-package wechat.login.rest.application;
+package com.liferay.wechat.login.rest.application;
 
 import java.io.IOException;
 import java.security.MessageDigest;

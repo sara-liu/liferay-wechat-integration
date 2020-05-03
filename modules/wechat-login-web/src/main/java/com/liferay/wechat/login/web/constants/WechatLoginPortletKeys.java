@@ -1,4 +1,4 @@
-package wechat.login.web.constants;
+package com.liferay.wechat.login.web.constants;
 
 /**
  * @author liferay

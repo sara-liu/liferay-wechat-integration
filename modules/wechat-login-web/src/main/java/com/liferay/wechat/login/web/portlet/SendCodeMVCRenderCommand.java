@@ -1,9 +1,10 @@
-package wechat.login.web.portlet;
+package com.liferay.wechat.login.web.portlet;
 
 import com.liferay.portal.kernel.json.JSONException;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.portlet.bridges.mvc.MVCActionCommand;
+import com.liferay.wechat.login.web.constants.WechatLoginPortletKeys;
 
 import java.io.IOException;
 
@@ -16,8 +17,6 @@ import org.apache.commons.httpclient.HttpException;
 import org.apache.commons.httpclient.HttpStatus;
 import org.apache.commons.httpclient.methods.GetMethod;
 import org.osgi.service.component.annotations.Component;
-
-import wechat.login.web.constants.WechatLoginPortletKeys;
 
 
 @Component(

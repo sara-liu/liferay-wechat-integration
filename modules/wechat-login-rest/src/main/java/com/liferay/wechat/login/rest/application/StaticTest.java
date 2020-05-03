@@ -1,4 +1,4 @@
-package wechat.login.rest.application;
+package com.liferay.wechat.login.rest.application;
 
 import com.liferay.portal.kernel.json.JSONException;
 /*import com.alibaba.fastjson.JSONException;
