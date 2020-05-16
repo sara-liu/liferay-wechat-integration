@@ -20,7 +20,6 @@ import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpException;
 import org.apache.commons.httpclient.HttpStatus;
 import org.apache.commons.httpclient.methods.GetMethod;
-import org.ietf.jgss.Oid;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.jaxrs.whiteboard.JaxrsWhiteboardConstants;
 
@@ -99,6 +98,7 @@ public class RestApplication extends Application {
 		AccessTokenInfo accessToken = getAccessToken(code);
 		UserInfo userInfo = getUserInfo(accessToken);
 
+		// TODO the charset
 		return userInfo.nickName;
 	}
 
@@ -145,10 +145,7 @@ public class RestApplication extends Application {
 				.append("&lang=").append(lang);
 
 		String finalUrl = sb.toString();
-		System.out.println(finalUrl);
-
 		String result = sendHttpGet(finalUrl);
-		System.out.println(result);
 
 		JSONObject jsonObject = JSONFactoryUtil.createJSONObject(result);
 
