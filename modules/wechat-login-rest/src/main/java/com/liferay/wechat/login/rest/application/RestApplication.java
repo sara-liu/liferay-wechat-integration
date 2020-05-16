@@ -38,6 +38,10 @@ import com.liferay.portal.kernel.json.JSONObject;
 public class RestApplication extends Application {
 	private static final String TOKEN = "liferaysaratest";
 
+	private static final String APP_ID = "wx2d653b1ce6779c0e";
+	private static final String SECRET = "to_be_replaced";
+	private static final String GRANT_TYPE = "authorization_code";
+
 	@GET
 	@Path("/hello")
 	@Produces("text/plain")
@@ -110,19 +114,11 @@ public class RestApplication extends Application {
 		JSONArray privilege;
 	}
 
-	// TODO to replace those in methods
-	private static final String APP_ID = "wx74ac7a84f8421a27";
-	private static final String SECRET = "baf71f9e1786a82da9863601366d656e";
-	private static final String GRANT_TYPE = "authorization_code";
-
 	private AccessTokenInfo getAccessToken(String code) throws JSONException, IOException {
 		String url = "https://api.weixin.qq.com/sns/oauth2/access_token";
-		String appid = "wx74ac7a84f8421a27";
-		String secret = "baf71f9e1786a82da9863601366d656e";
-		String grantType = "authorization_code";
 		StringBuilder sb = new StringBuilder();
-		sb.append(url).append("?").append("appid=").append(appid).append("&secret=").append(secret).append("&code=")
-				.append(code).append("&grant_type=").append(grantType);
+		sb.append(url).append("?").append("appid=").append(APP_ID).append("&secret=").append(SECRET).append("&code=")
+				.append(code).append("&grant_type=").append(GRANT_TYPE);
 
 		String finalUrl = sb.toString();
 		System.out.println(finalUrl);

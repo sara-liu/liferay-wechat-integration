@@ -9,7 +9,7 @@
 	 --%>
 
   <a
-    href="https://open.weixin.qq.com/connect/qrconnect?appid=wx74ac7a84f8421a27&redirect_uri=http%3A%2F%2Fwww.liferaydemo.cn/o/wx/sendCode&response_type=code&scope=snsapi_userinfo&state=STATE#wechat_redirect">
+    href="https://open.weixin.qq.com/connect/qrconnect?appid=wx2d653b1ce6779c0e&redirect_uri=http%3A%2F%2Fwww.liferaydemo.cn/o/wechat/sendCode&response_type=code&scope=snsapi_login&state=STATE#wechat_redirect">
     Login by Wechat </a>
 
   <%--	 
