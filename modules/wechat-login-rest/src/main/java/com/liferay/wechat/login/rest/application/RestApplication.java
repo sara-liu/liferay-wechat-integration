@@ -43,7 +43,7 @@ public class RestApplication extends Application {
 	private static final String TOKEN = "liferaysaratest";
 
 	private static final String APP_ID = "wx2d653b1ce6779c0e";
-	private static final String SECRET = "to_be_replaced";
+	private static final String SECRET = "replace_with_real";
 	private static final String GRANT_TYPE = "authorization_code";
 
 	@GET
@@ -99,12 +99,12 @@ public class RestApplication extends Application {
 	@Produces("text/plain")
 	public String sendCode(@Context HttpServletRequest request, @Context HttpServletResponse response)
 			throws JSONException, IOException {
+    response.setCharacterEncoding("utf-8");
 		String code = request.getParameter("code");
 		AccessTokenInfo accessToken = getAccessToken(code);
 		UserInfo userInfo = getUserInfo(accessToken);
 
-		// TODO the charset
-		return userInfo.nickName;
+		return "Hello " + userInfo.nickName + ", welcome to Liferay !";
 	}
 
 	private class AccessTokenInfo {
@@ -157,6 +157,7 @@ public class RestApplication extends Application {
 		UserInfo userInfo = new UserInfo();
 
 		userInfo.nickName = jsonObject.getString("nickname");
+		// logger.info("nickName:" + userInfo.nickName);
 		userInfo.sex = jsonObject.getString("sex");
 		userInfo.province = jsonObject.getString("province");
 //		JSONArray privilege = jsonObject.getJSONArray("privilege");
@@ -181,7 +182,6 @@ public class RestApplication extends Application {
 
 			// Use caution: ensure correct character encoding and is not binary data
 			String result = new String(responseBody, "utf-8");
-			logger.info(result);
 			return result;
 		} catch (HttpException e) {
 			System.err.println("Fatal protocol violation: " + e.getMessage());
