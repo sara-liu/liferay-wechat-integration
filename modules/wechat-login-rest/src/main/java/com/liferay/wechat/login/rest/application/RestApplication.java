@@ -27,14 +27,19 @@ import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONException;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
 
 /**
  * @author SaraLiu
+ * 
  */
 @Component(property = { JaxrsWhiteboardConstants.JAX_RS_APPLICATION_BASE + "=/wechat",
 		JaxrsWhiteboardConstants.JAX_RS_NAME + "=WechatLogin" }, service = Application.class)
 
 public class RestApplication extends Application {
+	Log logger = LogFactoryUtil.getLog(RestApplication.class);
+
 	private static final String TOKEN = "liferaysaratest";
 
 	private static final String APP_ID = "wx2d653b1ce6779c0e";
@@ -175,7 +180,8 @@ public class RestApplication extends Application {
 			byte[] responseBody = method.getResponseBody();
 
 			// Use caution: ensure correct character encoding and is not binary data
-			String result = new String(responseBody);
+			String result = new String(responseBody, "utf-8");
+			logger.info(result);
 			return result;
 		} catch (HttpException e) {
 			System.err.println("Fatal protocol violation: " + e.getMessage());
