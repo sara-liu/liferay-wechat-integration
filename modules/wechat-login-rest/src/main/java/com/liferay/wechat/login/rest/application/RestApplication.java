@@ -1,6 +1,8 @@
 package com.liferay.wechat.login.rest.application;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -30,6 +32,8 @@ import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 
+import java.util.Properties;
+
 /**
  * @author SaraLiu
  * 
@@ -40,11 +44,30 @@ import com.liferay.portal.kernel.log.LogFactoryUtil;
 public class RestApplication extends Application {
 	Log logger = LogFactoryUtil.getLog(RestApplication.class);
 
+	private static final String SECRET_PROP_FILE_NAME = "secret.properties";
 	private static final String TOKEN = "liferaysaratest";
-
 	private static final String APP_ID = "wx2d653b1ce6779c0e";
-	private static final String SECRET = "replace_with_real";
 	private static final String GRANT_TYPE = "authorization_code";
+	private final String SECRET;
+
+	{
+		Properties prop = new Properties();
+		InputStream inputStream = getClass().getClassLoader().getResourceAsStream(SECRET_PROP_FILE_NAME);
+
+		if (inputStream != null) {
+			try {
+				prop.load(inputStream);
+			} catch (IOException e) {
+				logger.error(e);
+			}
+		} else {
+			FileNotFoundException e = new FileNotFoundException(
+					"property file '" + SECRET_PROP_FILE_NAME + "' not found in the classpath");
+			logger.error(e);
+		}
+
+		SECRET = prop.getProperty("secret");
+	}
 
 	@GET
 	@Path("/hello")
@@ -99,7 +122,7 @@ public class RestApplication extends Application {
 	@Produces("text/plain")
 	public String sendCode(@Context HttpServletRequest request, @Context HttpServletResponse response)
 			throws JSONException, IOException {
-    response.setCharacterEncoding("utf-8");
+		response.setCharacterEncoding("utf-8");
 		String code = request.getParameter("code");
 		AccessTokenInfo accessToken = getAccessToken(code);
 		UserInfo userInfo = getUserInfo(accessToken);
