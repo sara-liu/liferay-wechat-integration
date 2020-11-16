@@ -8,11 +8,13 @@ import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.Company;
 import com.liferay.portal.kernel.model.CompanyConstants;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.security.auth.session.AuthenticatedSessionManagerUtil;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.UserLocalServiceUtil;
+import com.liferay.portal.kernel.util.PortalUtil;
 
 import java.io.IOException;
 import java.security.MessageDigest;
@@ -87,7 +89,7 @@ public class RestApplication extends Application {
 	// Hard code
 	long companyId = 20101;
 	String lastName = "L";
-	String password = "test";
+	String defaultPassword = "test";
 	String redirectUrl = "http://www.liferaydemo.cn";
 
 	private User addUser(String openId, String nickName) throws PortalException {
@@ -98,9 +100,9 @@ public class RestApplication extends Application {
 //				1970, "", empty_long_list, empty_long_list, empty_long_list, empty_long_list, false,
 //				new ServiceContext;
 		// Use wechat opendId as the screen name
-		User user = UserLocalServiceUtil.addUser(20130, companyId, false, "test", "test", false, openId,
-				openId + "@liferay.com", 0, "", java.util.Locale.CHINA, nickName, "", lastName, 0, 0, true, 1, 1,
-				1970, "", empty_long_list, empty_long_list, empty_long_list, empty_long_list, false,
+		User user = UserLocalServiceUtil.addUser(20130, companyId, false, defaultPassword, defaultPassword, false,
+				openId, openId + "@liferay.com", 0, "", java.util.Locale.CHINA, nickName, "", lastName, 0, 0, true, 1,
+				1, 1970, "", empty_long_list, empty_long_list, empty_long_list, empty_long_list, false,
 				new ServiceContext());
 
 		return user;
@@ -123,17 +125,32 @@ public class RestApplication extends Application {
 		logger.info("nickname: " + userInfo.nickName);
 		logger.info("openId: " + accessToken.openId);
 		User user = null;
+		boolean newAdded = false;
 		try {
 			// Wechat opendId is used as the screen name
-			user = UserLocalServiceUtil.getUserByScreenName(companyId, accessToken.openId); 
+			user = UserLocalServiceUtil.getUserByScreenName(companyId, accessToken.openId);
+			logger.info("got user: " + user.getScreenName());
 		} catch (PortalException e) {
 			user = addUser(accessToken.openId, userInfo.nickName);
+			logger.info("added user: " + user.getScreenName());
+			newAdded = true;
 		}
 
-		// User newUser = UserLocalServiceUtil.getUser(user.getUserId());
-		boolean rememberMe = true;
-		AuthenticatedSessionManagerUtil.login(request, response, user.getScreenName(), password, rememberMe,
-				CompanyConstants.AUTH_TYPE_SN);
+		String password = user.getPassword();
+		logger.info("password: " + password);
+		String readablePassword = user.getPasswordUnencrypted();
+		logger.info("readable password: " + readablePassword);
+
+		if (newAdded) {
+			AuthenticatedSessionManagerUtil.login(request, response, user.getScreenName(), defaultPassword, true,
+					CompanyConstants.AUTH_TYPE_SN);
+
+		} else {
+			// TODO(saraliu): To fix the passworld problem, set
+			// passwords.encryption.algorithm=NONE
+			AuthenticatedSessionManagerUtil.login(request, response, user.getScreenName(), password, true,
+					CompanyConstants.AUTH_TYPE_SN);
+		}
 		response.sendRedirect(redirectUrl);
 		return "done.";
 	}
