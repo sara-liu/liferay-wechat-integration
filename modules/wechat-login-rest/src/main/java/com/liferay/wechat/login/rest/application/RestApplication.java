@@ -84,62 +84,27 @@ public class RestApplication extends Application {
 		return Collections.<Object>singleton(this);
 	}
 
-	@GET
-	@Path("/tokenCheck")
-	@Produces("text/plain")
-	public String getToken(@Context HttpServletRequest request, @Context HttpServletResponse response)
-			throws IOException, NoSuchAlgorithmException {
+	// Hard code
+	long companyId = 20101;
+	String lastName = "L";
+	String password = "test";
+	String redirectUrl = "http://www.liferaydemo.cn";
 
-		String signature = request.getParameter("signature");
-		String timestamp = request.getParameter("timestamp");
-		String nonce = request.getParameter("nonce");
-		String echostr = request.getParameter("echostr");
-
-		System.out.println("signature:" + signature);
-		System.out.println("timestamp:" + timestamp);
-		System.out.println("nonce:" + nonce);
-		System.out.println("echostr:" + echostr);
-		System.out.println("TOKEN:" + TOKEN);
-
-		String[] params = new String[] { TOKEN, timestamp, nonce };
-		Arrays.sort(params);
-
-		String clearText = params[0] + params[1] + params[2];
-
-		String algorithm = "SHA-1";
-
-		String sign = new String(
-				Hex.encodeHex(MessageDigest.getInstance(algorithm).digest((clearText).getBytes()), true));
-
-		if (signature.equals(sign)) {
-			return echostr;
-		} else {
-			return "";
-		}
-	}
-
-	private User addUser(String nickName) throws PortalException {
-		// TODO find the right usage of Liferay
-		long unique_id = CounterLocalServiceUtil.increment();
+	private User addUser(String openId, String nickName) throws PortalException {
 		long[] empty_long_list = {};
 
 //		User user = UserLocalServiceUtil.addUser(20130, companyId, false, "test", "test", false, nickName,
 //				nickName + "@liferay.com", 0, "", java.util.Locale.CHINA, nickName, "", lastName, 0, 0, true, 1, 1,
 //				1970, "", empty_long_list, empty_long_list, empty_long_list, empty_long_list, false,
 //				new ServiceContext;
-		User user = UserLocalServiceUtil.addUser(20130, companyId, false, "test", "test", true, null,
-				nickName + "@liferay.com", 0, "", java.util.Locale.CHINA, nickName, "", lastName, 0, 0, true, 1, 1,
+		// Use wechat opendId as the screen name
+		User user = UserLocalServiceUtil.addUser(20130, companyId, false, "test", "test", false, openId,
+				openId + "@liferay.com", 0, "", java.util.Locale.CHINA, nickName, "", lastName, 0, 0, true, 1, 1,
 				1970, "", empty_long_list, empty_long_list, empty_long_list, empty_long_list, false,
 				new ServiceContext());
 
 		return user;
 	}
-
-	// Hard code
-	long companyId = 20101;
-	String lastName = "L";
-	String password = "test";
-	String redirectUrl = "http://www.liferaydemo.cn";
 
 	@GET
 	@Path("/wechat_login")
@@ -156,11 +121,13 @@ public class RestApplication extends Application {
 		// or you can implement a ScreenNameValidator to replace
 		// DefaultScreenNameValidator
 		logger.info("nickname: " + userInfo.nickName);
+		logger.info("openId: " + accessToken.openId);
 		User user = null;
 		try {
-			user = UserLocalServiceUtil.getUserByScreenName(companyId, userInfo.nickName);
+			// Wechat opendId is used as the screen name
+			user = UserLocalServiceUtil.getUserByScreenName(companyId, accessToken.openId); 
 		} catch (PortalException e) {
-			user = addUser(userInfo.nickName);
+			user = addUser(accessToken.openId, userInfo.nickName);
 		}
 
 		// User newUser = UserLocalServiceUtil.getUser(user.getUserId());
@@ -170,28 +137,26 @@ public class RestApplication extends Application {
 		response.sendRedirect(redirectUrl);
 		return "done.";
 	}
-
-	@GET
-	@Path("/testAddUser")
-	@Produces("text/plain")
-	public String testAddUser(@Context HttpServletRequest request, @Context HttpServletResponse response)
-			throws Exception {
-		boolean userExists = false;
-		User user = null;
-		if (!userExists) {
-			user = addUser("Liudafu");
-		}
-		User newUser = UserLocalServiceUtil.getUser(user.getUserId());
-		System.out.println(newUser.getUserId());
-		System.out.println(newUser.getLogin());
-
-		String password = "test";
-		boolean rememberMe = true;
-		AuthenticatedSessionManagerUtil.login(request, response, user.getLogin(), password, rememberMe,
-				CompanyConstants.AUTH_TYPE_EA);
-		response.sendRedirect("http://localhost:8080");
-		return "done.";
-	}
+//
+//	@GET
+//	@Path("/testAddUser")
+//	@Produces("text/plain")
+//	public String testAddUser(@Context HttpServletRequest request, @Context HttpServletResponse response)
+//			throws Exception {
+//		boolean userExists = false;
+//		User user = null;
+//		if (!userExists) {
+//			user = addUser("Liudafu");
+//		}
+//		User newUser = UserLocalServiceUtil.getUser(user.getUserId());
+//
+//		String password = "test";
+//		boolean rememberMe = true;
+//		AuthenticatedSessionManagerUtil.login(request, response, user.getLogin(), password, rememberMe,
+//				CompanyConstants.AUTH_TYPE_EA);
+//		response.sendRedirect("http://localhost:8080");
+//		return "done.";
+//	}
 
 	private class AccessTokenInfo {
 		String accessToken;
@@ -212,7 +177,6 @@ public class RestApplication extends Application {
 				.append(code).append("&grant_type=").append(GRANT_TYPE);
 
 		String finalUrl = sb.toString();
-		System.out.println(finalUrl);
 		String result = sendHttpGet(finalUrl);
 
 		JSONObject jsonObject = JSONFactoryUtil.createJSONObject(result);
@@ -226,7 +190,6 @@ public class RestApplication extends Application {
 
 	private UserInfo getUserInfo(AccessTokenInfo info) throws JSONException, IOException {
 		String url = "https://api.weixin.qq.com/sns/userinfo";
-
 		String accessToken = info.accessToken;
 		String openId = info.openId;
 		String lang = "zh_CN";
@@ -238,14 +201,10 @@ public class RestApplication extends Application {
 		String finalUrl = sb.toString();
 		String result = sendHttpGet(finalUrl);
 
-		// test code
-		System.out.print("result=======" + result);
-
 		JSONObject jsonObject = JSONFactoryUtil.createJSONObject(result);
 
 		UserInfo userInfo = new UserInfo();
 		userInfo.nickName = jsonObject.getString("nickname");
-		System.out.println(jsonObject.getString("openId"));
 		userInfo.sex = jsonObject.getString("sex");
 		userInfo.province = jsonObject.getString("province");
 
@@ -261,7 +220,7 @@ public class RestApplication extends Application {
 			int statusCode = client.executeMethod(method);
 
 			if (statusCode != HttpStatus.SC_OK) {
-				System.err.println("Method failed: " + method.getStatusLine());
+				logger.error("Method failed: " + method.getStatusLine());
 			}
 
 			// Read the response body.
@@ -271,10 +230,10 @@ public class RestApplication extends Application {
 			String result = new String(responseBody, "utf-8");
 			return result;
 		} catch (HttpException e) {
-			System.err.println("Fatal protocol violation: " + e.getMessage());
+			logger.error("Fatal protocol violation: " + e.getMessage());
 			e.printStackTrace();
 		} catch (IOException e) {
-			System.err.println("Fatal transport error: " + e.getMessage());
+			logger.error("Fatal transport error: " + e.getMessage());
 			e.printStackTrace();
 		} finally {
 			// Release the connection.
