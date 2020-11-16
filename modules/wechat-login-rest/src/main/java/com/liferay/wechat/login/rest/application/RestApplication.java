@@ -1,8 +1,20 @@
 package com.liferay.wechat.login.rest.application;
 
-import java.io.FileNotFoundException;
+import com.liferay.counter.kernel.service.CounterLocalServiceUtil;
+import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.json.JSONArray;
+import com.liferay.portal.kernel.json.JSONException;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
+import com.liferay.portal.kernel.json.JSONObject;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.CompanyConstants;
+import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.security.auth.session.AuthenticatedSessionManagerUtil;
+import com.liferay.portal.kernel.service.ServiceContext;
+import com.liferay.portal.kernel.service.UserLocalServiceUtil;
+
 import java.io.IOException;
-import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -25,15 +37,6 @@ import org.apache.commons.httpclient.methods.GetMethod;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.jaxrs.whiteboard.JaxrsWhiteboardConstants;
 
-import com.liferay.portal.kernel.json.JSONArray;
-import com.liferay.portal.kernel.json.JSONException;
-import com.liferay.portal.kernel.json.JSONFactoryUtil;
-import com.liferay.portal.kernel.json.JSONObject;
-import com.liferay.portal.kernel.log.Log;
-import com.liferay.portal.kernel.log.LogFactoryUtil;
-
-import java.util.Properties;
-
 /**
  * @author SaraLiu
  * 
@@ -48,26 +51,26 @@ public class RestApplication extends Application {
 	private static final String TOKEN = "liferaysaratest";
 	private static final String APP_ID = "wx2d653b1ce6779c0e";
 	private static final String GRANT_TYPE = "authorization_code";
-	private final String SECRET;
+	private final String SECRET = "0145b2ee0613ce531dc0f303c5d16093";
 
-	{
-		Properties prop = new Properties();
-		InputStream inputStream = getClass().getClassLoader().getResourceAsStream(SECRET_PROP_FILE_NAME);
-
-		if (inputStream != null) {
-			try {
-				prop.load(inputStream);
-			} catch (IOException e) {
-				logger.error(e);
-			}
-		} else {
-			FileNotFoundException e = new FileNotFoundException(
-					"property file '" + SECRET_PROP_FILE_NAME + "' not found in the classpath");
-			logger.error(e);
-		}
-
-		SECRET = prop.getProperty("secret");
-	}
+//	{
+//		Properties prop = new Properties();
+//		InputStream inputStream = getClass().getClassLoader().getResourceAsStream(SECRET_PROP_FILE_NAME);
+//
+//		if (inputStream != null) {
+//			try {
+//				prop.load(inputStream);
+//			} catch (IOException e) {
+//				logger.error(e);
+//			}
+//		} else {
+//			FileNotFoundException e = new FileNotFoundException(
+//					"property file '" + SECRET_PROP_FILE_NAME + "' not found in the classpath");
+//			logger.error(e);
+//		}
+//
+//		SECRET = prop.getProperty("secret");
+//	}
 
 	@GET
 	@Path("/hello")
@@ -81,7 +84,6 @@ public class RestApplication extends Application {
 		return Collections.<Object>singleton(this);
 	}
 
-	// TODO rename to checkToken
 	@GET
 	@Path("/tokenCheck")
 	@Produces("text/plain")
@@ -110,24 +112,85 @@ public class RestApplication extends Application {
 				Hex.encodeHex(MessageDigest.getInstance(algorithm).digest((clearText).getBytes()), true));
 
 		if (signature.equals(sign)) {
-//		  response.getWriter().print(echostr); }
 			return echostr;
 		} else {
 			return "";
 		}
 	}
 
+	private User addUser(String nickName) throws PortalException {
+		// TODO find the right usage of Liferay
+		long unique_id = CounterLocalServiceUtil.increment();
+		long[] empty_long_list = {};
+
+//		User user = UserLocalServiceUtil.addUser(20130, companyId, false, "test", "test", false, nickName,
+//				nickName + "@liferay.com", 0, "", java.util.Locale.CHINA, nickName, "", lastName, 0, 0, true, 1, 1,
+//				1970, "", empty_long_list, empty_long_list, empty_long_list, empty_long_list, false,
+//				new ServiceContext;
+		User user = UserLocalServiceUtil.addUser(20130, companyId, false, "test", "test", true, null,
+				nickName + "@liferay.com", 0, "", java.util.Locale.CHINA, nickName, "", lastName, 0, 0, true, 1, 1,
+				1970, "", empty_long_list, empty_long_list, empty_long_list, empty_long_list, false,
+				new ServiceContext());
+
+		return user;
+	}
+
+	// Hard code
+	long companyId = 20101;
+	String lastName = "L";
+	String password = "test";
+	String redirectUrl = "http://www.liferaydemo.cn";
+
 	@GET
-	@Path("/sendCode")
+	@Path("/wechat_login")
 	@Produces("text/plain")
-	public String sendCode(@Context HttpServletRequest request, @Context HttpServletResponse response)
-			throws JSONException, IOException {
+	public String wechatLogin(@Context HttpServletRequest request, @Context HttpServletResponse response)
+			throws Exception {
 		response.setCharacterEncoding("utf-8");
 		String code = request.getParameter("code");
 		AccessTokenInfo accessToken = getAccessToken(code);
 		UserInfo userInfo = getUserInfo(accessToken);
 
-		return "Hello " + userInfo.nickName + ", welcome to Liferay !";
+		// NOTES: the nickname cannot be Chinese (DefaultScreenNameValidator will throw
+		// an exception)
+		// or you can implement a ScreenNameValidator to replace
+		// DefaultScreenNameValidator
+		logger.info("nickname: " + userInfo.nickName);
+		User user = null;
+		try {
+			user = UserLocalServiceUtil.getUserByScreenName(companyId, userInfo.nickName);
+		} catch (PortalException e) {
+			user = addUser(userInfo.nickName);
+		}
+
+		// User newUser = UserLocalServiceUtil.getUser(user.getUserId());
+		boolean rememberMe = true;
+		AuthenticatedSessionManagerUtil.login(request, response, user.getScreenName(), password, rememberMe,
+				CompanyConstants.AUTH_TYPE_SN);
+		response.sendRedirect(redirectUrl);
+		return "done.";
+	}
+
+	@GET
+	@Path("/testAddUser")
+	@Produces("text/plain")
+	public String testAddUser(@Context HttpServletRequest request, @Context HttpServletResponse response)
+			throws Exception {
+		boolean userExists = false;
+		User user = null;
+		if (!userExists) {
+			user = addUser("Liudafu");
+		}
+		User newUser = UserLocalServiceUtil.getUser(user.getUserId());
+		System.out.println(newUser.getUserId());
+		System.out.println(newUser.getLogin());
+
+		String password = "test";
+		boolean rememberMe = true;
+		AuthenticatedSessionManagerUtil.login(request, response, user.getLogin(), password, rememberMe,
+				CompanyConstants.AUTH_TYPE_EA);
+		response.sendRedirect("http://localhost:8080");
+		return "done.";
 	}
 
 	private class AccessTokenInfo {
@@ -175,15 +238,16 @@ public class RestApplication extends Application {
 		String finalUrl = sb.toString();
 		String result = sendHttpGet(finalUrl);
 
+		// test code
+		System.out.print("result=======" + result);
+
 		JSONObject jsonObject = JSONFactoryUtil.createJSONObject(result);
 
 		UserInfo userInfo = new UserInfo();
-
 		userInfo.nickName = jsonObject.getString("nickname");
-		// logger.info("nickName:" + userInfo.nickName);
+		System.out.println(jsonObject.getString("openId"));
 		userInfo.sex = jsonObject.getString("sex");
 		userInfo.province = jsonObject.getString("province");
-//		JSONArray privilege = jsonObject.getJSONArray("privilege");
 
 		return userInfo;
 	}
@@ -218,8 +282,6 @@ public class RestApplication extends Application {
 		}
 
 		return "";
-
-		// TODO close http client if necessary
 	}
 
 }
