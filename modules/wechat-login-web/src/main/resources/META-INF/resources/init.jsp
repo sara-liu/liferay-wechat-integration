@@ -13,4 +13,7 @@ taglib uri="http://liferay.com/tld/ui" prefix="liferay-ui" %>
 
 <portlet:defineObjects />
 
-<%String currentURL = PortalUtil.getCurrentURL(request); %>
+<% String currentURL = PortalUtil.getCurrentURL(request); 
+
+
+%>

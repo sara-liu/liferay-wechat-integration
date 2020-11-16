@@ -1,11 +1,18 @@
 package com.liferay.wechat.login.rest.application;
 
-import java.io.FileNotFoundException;
+import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.json.JSONException;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
+import com.liferay.portal.kernel.json.JSONObject;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.CompanyConstants;
+import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.security.auth.session.AuthenticatedSessionManagerUtil;
+import com.liferay.portal.kernel.service.ServiceContext;
+import com.liferay.portal.kernel.service.UserLocalServiceUtil;
+
 import java.io.IOException;
-import java.io.InputStream;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Set;
 
@@ -17,7 +24,6 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Application;
 import javax.ws.rs.core.Context;
 
-import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpException;
 import org.apache.commons.httpclient.HttpStatus;
@@ -25,110 +31,99 @@ import org.apache.commons.httpclient.methods.GetMethod;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.jaxrs.whiteboard.JaxrsWhiteboardConstants;
 
-import com.liferay.portal.kernel.json.JSONArray;
-import com.liferay.portal.kernel.json.JSONException;
-import com.liferay.portal.kernel.json.JSONFactoryUtil;
-import com.liferay.portal.kernel.json.JSONObject;
-import com.liferay.portal.kernel.log.Log;
-import com.liferay.portal.kernel.log.LogFactoryUtil;
-
-import java.util.Properties;
-
 /**
  * @author SaraLiu
  * 
  */
-@Component(property = { JaxrsWhiteboardConstants.JAX_RS_APPLICATION_BASE + "=/wechat",
-		JaxrsWhiteboardConstants.JAX_RS_NAME + "=WechatLogin" }, service = Application.class)
+
+@Component(
+	property = { 
+			JaxrsWhiteboardConstants.JAX_RS_APPLICATION_BASE + "=/wechat",
+			JaxrsWhiteboardConstants.JAX_RS_NAME + "=WechatLogin" 
+	},
+	service = Application.class
+)
 
 public class RestApplication extends Application {
+
 	Log logger = LogFactoryUtil.getLog(RestApplication.class);
 
 	private static final String SECRET_PROP_FILE_NAME = "secret.properties";
 	private static final String TOKEN = "liferaysaratest";
 	private static final String APP_ID = "wx2d653b1ce6779c0e";
 	private static final String GRANT_TYPE = "authorization_code";
-	private final String SECRET;
+	private final String SECRET = "0145b2ee0613ce531dc0f303c5d16093";
 
-	{
-		Properties prop = new Properties();
-		InputStream inputStream = getClass().getClassLoader().getResourceAsStream(SECRET_PROP_FILE_NAME);
-
-		if (inputStream != null) {
-			try {
-				prop.load(inputStream);
-			} catch (IOException e) {
-				logger.error(e);
-			}
-		} else {
-			FileNotFoundException e = new FileNotFoundException(
-					"property file '" + SECRET_PROP_FILE_NAME + "' not found in the classpath");
-			logger.error(e);
-		}
-
-		SECRET = prop.getProperty("secret");
-	}
-
-	@GET
-	@Path("/hello")
-	@Produces("text/plain")
-	public String hello() {
-		return "hello, this works!";
-	}
+//	{
+//		Properties prop = new Properties();
+//		InputStream inputStream = getClass().getClassLoader().getResourceAsStream(SECRET_PROP_FILE_NAME);
+//
+//		if (inputStream != null) {
+//			try {
+//				prop.load(inputStream);
+//			} catch (IOException e) {
+//				logger.error(e);
+//			}
+//		} else {
+//			FileNotFoundException e = new FileNotFoundException(
+//					"property file '" + SECRET_PROP_FILE_NAME + "' not found in the classpath");
+//			logger.error(e);
+//		}
+//
+//		SECRET = prop.getProperty("secret");
+//	}
 
 	// NOTE: This method is necessary for Liferay Protal, don't delete it.
+
 	public Set<Object> getSingletons() {
+
 		return Collections.<Object>singleton(this);
 	}
 
-	// TODO rename to checkToken
 	@GET
-	@Path("/tokenCheck")
+	@Path("/wechat_login")
 	@Produces("text/plain")
-	public String getToken(@Context HttpServletRequest request, @Context HttpServletResponse response)
-			throws IOException, NoSuchAlgorithmException {
+	public String wechatLogin(@Context HttpServletRequest request, @Context HttpServletResponse response)
+			throws Exception {
 
-		String signature = request.getParameter("signature");
-		String timestamp = request.getParameter("timestamp");
-		String nonce = request.getParameter("nonce");
-		String echostr = request.getParameter("echostr");
-
-		System.out.println("signature:" + signature);
-		System.out.println("timestamp:" + timestamp);
-		System.out.println("nonce:" + nonce);
-		System.out.println("echostr:" + echostr);
-		System.out.println("TOKEN:" + TOKEN);
-
-		String[] params = new String[] { TOKEN, timestamp, nonce };
-		Arrays.sort(params);
-
-		String clearText = params[0] + params[1] + params[2];
-
-		String algorithm = "SHA-1";
-
-		String sign = new String(
-				Hex.encodeHex(MessageDigest.getInstance(algorithm).digest((clearText).getBytes()), true));
-
-		if (signature.equals(sign)) {
-//		  response.getWriter().print(echostr); }
-			return echostr;
-		} else {
-			return "";
-		}
-	}
-
-	@GET
-	@Path("/sendCode")
-	@Produces("text/plain")
-	public String sendCode(@Context HttpServletRequest request, @Context HttpServletResponse response)
-			throws JSONException, IOException {
 		response.setCharacterEncoding("utf-8");
 		String code = request.getParameter("code");
 		AccessTokenInfo accessToken = getAccessToken(code);
 		UserInfo userInfo = getUserInfo(accessToken);
 
-		return "Hello " + userInfo.nickName + ", welcome to Liferay !";
+		User user = null;
+		boolean newAdded = false;
+
+		try {
+			// Wechat opendId is used as the screen name
+			user = UserLocalServiceUtil.getUserByScreenName(companyId, accessToken.openId);
+		} catch (PortalException e) {
+			user = addUser(accessToken.openId, userInfo.nickName);
+			newAdded = true;
+		}
+
+		String password = user.getPassword();
+		// remove the begin "{NONE}"
+		password = password.substring(6);
+
+		if (newAdded) {
+			AuthenticatedSessionManagerUtil.login(request, response, user.getScreenName(), defaultPassword, true,
+					CompanyConstants.AUTH_TYPE_SN);
+
+		} else {
+			AuthenticatedSessionManagerUtil.login(request, response, user.getScreenName(), password, true,
+					CompanyConstants.AUTH_TYPE_SN);
+		}
+
+		response.sendRedirect(redirectUrl);
+		return "done.";
 	}
+
+	// Hard code
+	long companyId = 20101;
+	String lastName = "L";
+	String defaultPassword = "test";
+	String redirectUrl = "http://www.liferaydemo.cn";
 
 	private class AccessTokenInfo {
 		String accessToken;
@@ -137,19 +132,29 @@ public class RestApplication extends Application {
 
 	private class UserInfo {
 		String nickName;
-		String sex;
-		String province;
-		JSONArray privilege;
+	}
+
+	private User addUser(String openId, String nickName) throws PortalException {
+
+		long[] empty_long_list = {};
+
+		// Use wechat opendId as the screen name
+		User user = UserLocalServiceUtil.addUser(20130, companyId, false, defaultPassword, defaultPassword, false,
+			openId, openId + "@liferay.com", 0, "", java.util.Locale.CHINA, nickName, "", lastName, 0, 0, true, 1,
+			1, 1970, "", empty_long_list, empty_long_list, empty_long_list, empty_long_list, false,
+			new ServiceContext());
+
+		return user;
 	}
 
 	private AccessTokenInfo getAccessToken(String code) throws JSONException, IOException {
+
 		String url = "https://api.weixin.qq.com/sns/oauth2/access_token";
 		StringBuilder sb = new StringBuilder();
 		sb.append(url).append("?").append("appid=").append(APP_ID).append("&secret=").append(SECRET).append("&code=")
 				.append(code).append("&grant_type=").append(GRANT_TYPE);
 
 		String finalUrl = sb.toString();
-		System.out.println(finalUrl);
 		String result = sendHttpGet(finalUrl);
 
 		JSONObject jsonObject = JSONFactoryUtil.createJSONObject(result);
@@ -158,12 +163,13 @@ public class RestApplication extends Application {
 		AccessTokenInfo info = new AccessTokenInfo();
 		info.accessToken = accessToken;
 		info.openId = openId;
+
 		return info;
 	}
 
 	private UserInfo getUserInfo(AccessTokenInfo info) throws JSONException, IOException {
-		String url = "https://api.weixin.qq.com/sns/userinfo";
 
+		String url = "https://api.weixin.qq.com/sns/userinfo";
 		String accessToken = info.accessToken;
 		String openId = info.openId;
 		String lang = "zh_CN";
@@ -178,17 +184,17 @@ public class RestApplication extends Application {
 		JSONObject jsonObject = JSONFactoryUtil.createJSONObject(result);
 
 		UserInfo userInfo = new UserInfo();
-
 		userInfo.nickName = jsonObject.getString("nickname");
-		// logger.info("nickName:" + userInfo.nickName);
-		userInfo.sex = jsonObject.getString("sex");
-		userInfo.province = jsonObject.getString("province");
-//		JSONArray privilege = jsonObject.getJSONArray("privilege");
+		/*
+		 * userInfo.sex = jsonObject.getString("sex"); userInfo.province =
+		 * jsonObject.getString("province");
+		 */
 
 		return userInfo;
 	}
 
 	public String sendHttpGet(String url) throws JSONException, IOException {
+
 		HttpClient client = new HttpClient();
 		GetMethod method = new GetMethod(url);
 
@@ -197,7 +203,7 @@ public class RestApplication extends Application {
 			int statusCode = client.executeMethod(method);
 
 			if (statusCode != HttpStatus.SC_OK) {
-				System.err.println("Method failed: " + method.getStatusLine());
+				logger.error("Method failed: " + method.getStatusLine());
 			}
 
 			// Read the response body.
@@ -205,12 +211,13 @@ public class RestApplication extends Application {
 
 			// Use caution: ensure correct character encoding and is not binary data
 			String result = new String(responseBody, "utf-8");
+
 			return result;
 		} catch (HttpException e) {
-			System.err.println("Fatal protocol violation: " + e.getMessage());
+			logger.error("Fatal protocol violation: " + e.getMessage());
 			e.printStackTrace();
 		} catch (IOException e) {
-			System.err.println("Fatal transport error: " + e.getMessage());
+			logger.error("Fatal transport error: " + e.getMessage());
 			e.printStackTrace();
 		} finally {
 			// Release the connection.
@@ -218,8 +225,6 @@ public class RestApplication extends Application {
 		}
 
 		return "";
-
-		// TODO close http client if necessary
 	}
 
 }
