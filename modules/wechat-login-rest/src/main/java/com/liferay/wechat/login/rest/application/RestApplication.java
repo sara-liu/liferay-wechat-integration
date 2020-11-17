@@ -1,6 +1,5 @@
 package com.liferay.wechat.login.rest.application;
 
-import com.liferay.counter.kernel.service.CounterLocalServiceUtil;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONException;
@@ -8,18 +7,13 @@ import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.model.Company;
 import com.liferay.portal.kernel.model.CompanyConstants;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.security.auth.session.AuthenticatedSessionManagerUtil;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.UserLocalServiceUtil;
-import com.liferay.portal.kernel.util.PortalUtil;
 
 import java.io.IOException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Set;
 
@@ -31,7 +25,6 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Application;
 import javax.ws.rs.core.Context;
 
-import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpException;
 import org.apache.commons.httpclient.HttpStatus;
@@ -74,38 +67,16 @@ public class RestApplication extends Application {
 //		SECRET = prop.getProperty("secret");
 //	}
 
-	@GET
-	@Path("/hello")
-	@Produces("text/plain")
-	public String hello() {
-		return "hello, this works!";
-	}
-
 	// NOTE: This method is necessary for Liferay Protal, don't delete it.
 	public Set<Object> getSingletons() {
 		return Collections.<Object>singleton(this);
 	}
 
-	// Hard code
-	long companyId = 20101;
-	String lastName = "L";
-	String defaultPassword = "test";
-	String redirectUrl = "http://www.liferaydemo.cn";
-
-	private User addUser(String openId, String nickName) throws PortalException {
-		long[] empty_long_list = {};
-
-//		User user = UserLocalServiceUtil.addUser(20130, companyId, false, "test", "test", false, nickName,
-//				nickName + "@liferay.com", 0, "", java.util.Locale.CHINA, nickName, "", lastName, 0, 0, true, 1, 1,
-//				1970, "", empty_long_list, empty_long_list, empty_long_list, empty_long_list, false,
-//				new ServiceContext;
-		// Use wechat opendId as the screen name
-		User user = UserLocalServiceUtil.addUser(20130, companyId, false, defaultPassword, defaultPassword, false,
-				openId, openId + "@liferay.com", 0, "", java.util.Locale.CHINA, nickName, "", lastName, 0, 0, true, 1,
-				1, 1970, "", empty_long_list, empty_long_list, empty_long_list, empty_long_list, false,
-				new ServiceContext());
-
-		return user;
+	@GET
+	@Path("/hello")
+	@Produces("text/plain")
+	public String hello() {
+		return "hello, this works!";
 	}
 
 	@GET
@@ -118,62 +89,39 @@ public class RestApplication extends Application {
 		AccessTokenInfo accessToken = getAccessToken(code);
 		UserInfo userInfo = getUserInfo(accessToken);
 
-		// NOTES: the nickname cannot be Chinese (DefaultScreenNameValidator will throw
-		// an exception)
-		// or you can implement a ScreenNameValidator to replace
-		// DefaultScreenNameValidator
-		logger.info("nickname: " + userInfo.nickName);
-		logger.info("openId: " + accessToken.openId);
+		// NOTES: the nickname cannot be Chinese (DefaultScreenNameValidator will throw an exception)
 		User user = null;
 		boolean newAdded = false;
 		try {
 			// Wechat opendId is used as the screen name
 			user = UserLocalServiceUtil.getUserByScreenName(companyId, accessToken.openId);
-			logger.info("got user: " + user.getScreenName());
 		} catch (PortalException e) {
 			user = addUser(accessToken.openId, userInfo.nickName);
-			logger.info("added user: " + user.getScreenName());
 			newAdded = true;
 		}
 
 		String password = user.getPassword();
-		logger.info("password: " + password);
-		String readablePassword = user.getPasswordUnencrypted();
-		logger.info("readable password: " + readablePassword);
+		// remove the begin "{NONE}"
+		password = password.substring(6);
 
 		if (newAdded) {
 			AuthenticatedSessionManagerUtil.login(request, response, user.getScreenName(), defaultPassword, true,
 					CompanyConstants.AUTH_TYPE_SN);
 
 		} else {
-			// TODO(saraliu): To fix the passworld problem, set
-			// passwords.encryption.algorithm=NONE
 			AuthenticatedSessionManagerUtil.login(request, response, user.getScreenName(), password, true,
 					CompanyConstants.AUTH_TYPE_SN);
 		}
+
 		response.sendRedirect(redirectUrl);
 		return "done.";
 	}
-//
-//	@GET
-//	@Path("/testAddUser")
-//	@Produces("text/plain")
-//	public String testAddUser(@Context HttpServletRequest request, @Context HttpServletResponse response)
-//			throws Exception {
-//		boolean userExists = false;
-//		User user = null;
-//		if (!userExists) {
-//			user = addUser("Liudafu");
-//		}
-//		User newUser = UserLocalServiceUtil.getUser(user.getUserId());
-//
-//		String password = "test";
-//		boolean rememberMe = true;
-//		AuthenticatedSessionManagerUtil.login(request, response, user.getLogin(), password, rememberMe,
-//				CompanyConstants.AUTH_TYPE_EA);
-//		response.sendRedirect("http://localhost:8080");
-//		return "done.";
-//	}
+
+	// Hard code
+	long companyId = 20101;
+	String lastName = "L";
+	String defaultPassword = "test";
+	String redirectUrl = "http://www.liferaydemo.cn";
 
 	private class AccessTokenInfo {
 		String accessToken;
@@ -185,6 +133,18 @@ public class RestApplication extends Application {
 		String sex;
 		String province;
 		JSONArray privilege;
+	}
+
+	private User addUser(String openId, String nickName) throws PortalException {
+		long[] empty_long_list = {};
+
+		// Use wechat opendId as the screen name
+		User user = UserLocalServiceUtil.addUser(20130, companyId, false, defaultPassword, defaultPassword, false,
+				openId, openId + "@liferay.com", 0, "", java.util.Locale.CHINA, nickName, "", lastName, 0, 0, true, 1,
+				1, 1970, "", empty_long_list, empty_long_list, empty_long_list, empty_long_list, false,
+				new ServiceContext());
+
+		return user;
 	}
 
 	private AccessTokenInfo getAccessToken(String code) throws JSONException, IOException {
